@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>회원가입</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:480px; margin:40px auto; padding:0 16px; }
+    label { display:block; margin-top:12px; }
+    input { width:100%; padding:8px; margin-top:6px; box-sizing:border-box; }
+    button { margin-top:16px; padding:10px 16px; }
+    .msg { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>회원가입</h1>
+  <form id="signupForm">
+    <label>이메일
+      <input type="email" id="email" name="email" required />
+    </label>
+    <label>닉네임
+      <input type="text" id="nickname" name="nickname" required />
+    </label>
+    <label>비밀번호
+      <input type="password" id="password" name="password" required />
+    </label>
+    <button type="submit">가입하기</button>
+  </form>
+  <div class="msg" id="message"></div>
+  <script src="/js/signup.js"></script>
+</body>
+</html>

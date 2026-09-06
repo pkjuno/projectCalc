@@ -1,0 +1,38 @@
+name: frontend
+description: A new Flutter project.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_svg: ^2.0.2
+  http: ^1.1.0
+  fluttertoast: ^8.2.4
+  url_launcher: ^6.1.10
+  table_calendar: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  assets:
+    - assets/add_icon.svg
+    - assets/back_arrow.svg
+    - assets/calendar_prev.svg
+    - assets/calendar_next.svg
+    - assets/nav_home.svg
+    - assets/nav_home_active.svg
+    - assets/nav_calendar.svg
+    - assets/nav_calendar_active.svg
+    - assets/nav_add.svg
+    - assets/nav_add_active.svg
+    - assets/nav_notifications.svg
+    - assets/nav_notifications_active.svg
+    - assets/nav_profile.svg
+    - assets/nav_profile_active.svg

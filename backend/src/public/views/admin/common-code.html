@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>공통코드 관리</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f7f7f7; }
+    .card { background: white; padding: 24px; border-radius: 12px; max-width: 900px; margin: 0 auto; }
+    input, textarea, select, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+    button { background: #111; color: white; cursor: pointer; }
+    .row { display: flex; gap: 12px; }
+    .detail-row { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
+    .detail-row > div { flex: 1; }
+    .add-btn { width: auto; padding: 8px 12px; margin-top: 8px; }
+    .remove-btn { width: auto; padding: 8px 12px; margin-top: 8px; background: #666; }
+    .helper-text { color: #666; font-size: 13px; margin-top: 6px; }
+    .empty-state { color: #999; font-size: 13px; padding: 10px 0; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-backdrop.open { display: flex; }
+    .modal-card { background: white; width: min(760px, 100%); border-radius: 12px; padding: 20px; box-shadow: 0 10px 35px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .modal-actions button { width: auto; padding: 8px 14px; }
+    .modal-close { background: #666; }
+    .master-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .master-option { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; background: #f8fafc; }
+    .master-option:hover { background: #eef2ff; }
+    .selected-master { margin-top: 10px; color: #2563eb; font-weight: 600; }
+    .detail-panel { margin-top: 20px; display: none; }
+    .detail-panel.active { display: block; }
+    .detail-panel-header { padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; }
+    .detail-panel-header strong { color: #0f172a; }
+    .table-actions { display: flex; gap: 6px; }
+    .table-btn { width: auto; padding: 6px 10px; margin-top: 0; font-size: 12px; }
+    .edit-btn { background: #2563eb; }
+    .delete-btn { background: #dc2626; }
+    .row > div { flex: 1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal-card">
+      <h3>공통코드 수정</h3>
+      <div class="helper-text">현재 마스터코드와 연결된 상세코드를 확인하고 추가할 수 있습니다.</div>
+      <form id="modalForm">
+        <div class="row">
+          <div>
+            <label>마스터 코드</label>
+            <input id="modalMstCode" required />
+          </div>
+          <div>
+            <label>마스터 코드명</label>
+            <input id="modalMstCodeNm" required />
+          </div>
+        </div>
+        <div class="row" style="margin-top: 12px;">
+          <div>
+            <label>설명</label>
+            <input id="modalDescription" required />
+          </div>
+          <div>
+            <label>사용 여부</label>
+            <select id="modalUseYn">
+              <option value="Y">사용</option>
+              <option value="N">미사용</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top: 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>상세코드</strong>
+            <button type="button" class="add-btn" id="modalAddDetailBtn">+ 상세코드 추가</button>
+          </div>
+          <div id="modalDetailList"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="modal-close" id="modalCloseBtn">닫기</button>
+          <button type="submit">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>공통코드 관리</h2>
+    <form id="codeForm">
+      <div class="row">
+        <div>
+          <label>마스터 코드</label>
+          <input id="mstCode" required placeholder="예: USER_TYPE" />
+        </div>
+        <div>
+          <label>마스터 코드명</label>
+          <input id="mstCodeNm" required placeholder="예: 사용자 유형" />
+        </div>
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <div>
+          <label>설명</label>
+          <input id="description" required placeholder="예: 사용자 구분 코드" />
+        </div>
+        <div>
+          <label>사용 여부</label>
+          <select id="useYn">
+            <option value="Y">사용</option>
+            <option value="N">미사용</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="detailPanel" class="detail-panel">
+        <div class="detail-panel-header">
+          <strong>상세코드 등록</strong>
+          <div id="detailPanelContext" class="helper-text">선택된 마스터코드에 속하는 상세코드를 등록합니다.</div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong>상세코드 목록</strong>
+          <button type="button" class="add-btn" id="addDetailBtn">+ 상세코드 추가</button>
+        </div>
+        <div class="helper-text">현재 선택된 마스터코드에만 상세코드가 연결됩니다.</div>
+        <div id="detailList"></div>
+      </div>
+      <button type="submit" style="margin-top: 16px;">저장</button>
+    </form>
+
+    <h3 style="margin-top: 24px;">등록된 공통코드</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>마스터코드</th>
+          <th>코드명</th>
+          <th>설명</th>
+          <th>사용여부</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody id="codeList"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let detailRows = [];
+    let editingMstCode = null;
+    let selectedMstCode = null;
+    let codeData = { masters: [], details: [] };
+    let modalDetailRows = [];
+
+    function createDetailRow(item = {}) {
+      const row = document.createElement('div');
+      row.className = 'detail-row';
+      row.innerHTML = `
+        <div>
+          <label>상세 코드</label>
+          <input name="detailCode" value="${item.detailCode || ''}" placeholder="예: A" />
+        </div>
+        <div>
+          <label>상세 코드명</label>
+          <input name="detailCodeNm" value="${item.detailCodeNm || ''}" placeholder="예: 관리자" />
+        </div>
+        <div>
+          <label>정렬 순서</label>
+          <input name="sortOrder" type="number" value="${item.sortOrder ?? 0}" />
+        </div>
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove(); syncDetailRows();">삭제</button>
+      `;
+      return row;
+    }
+
+    function syncDetailRows() {
+      const container = document.getElementById('detailList');
+      const rows = container.querySelectorAll('.detail-row');
+      detailRows = Array.from(rows).map((row) => ({
+        detailCode: row.querySelector('input[name="detailCode"]').value,
+        detailCodeNm: row.querySelector('input[name="detailCodeNm"]').value,
+        sortOrder: Number(row.querySelector('input[name="sortOrder"]').value || 0),
+      })).filter(item => item.detailCode || item.detailCodeNm);
+    }
+
+    function resetDetailRows() {
+      const container = document.getElementById('detailList');
+      container.innerHTML = '';
+      container.appendChild(createDetailRow());
+      syncDetailRows();
+    }
+
+    function createModalDetailRow(item = {}) {
+      const row = document.createElement('div');
+      row.className = 'detail-row';
+      row.innerHTML = `
+        <div>
+          <label>상세 코드</label>
+          <input name="modalDetailCode" value="${item.detailCode || ''}" placeholder="예: A" />
+        </div>
+        <div>
+          <label>상세 코드명</label>
+          <input name="modalDetailCodeNm" value="${item.detailCodeNm || ''}" placeholder="예: 관리자" />
+        </div>
+        <div>
+          <label>정렬 순서</label>
+          <input name="modalSortOrder" type="number" value="${item.sortOrder ?? 0}" />
+        </div>
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove(); syncModalDetailRows();">삭제</button>
+      `;
+      return row;
+    }
+
+    function syncModalDetailRows() {
+      const container = document.getElementById('modalDetailList');
+      const rows = container.querySelectorAll('.detail-row');
+      modalDetailRows = Array.from(rows).map((row) => ({
+        detailCode: row.querySelector('input[name="modalDetailCode"]').value,
+        detailCodeNm: row.querySelector('input[name="modalDetailCodeNm"]').value,
+        sortOrder: Number(row.querySelector('input[name="modalSortOrder"]').value || 0),
+      })).filter(item => item.detailCode || item.detailCodeNm);
+    }
+
+    function renderModalDetailRows(items = []) {
+      const container = document.getElementById('modalDetailList');
+      container.innerHTML = '';
+      if (!items.length) {
+        container.appendChild(createModalDetailRow());
+      } else {
+        items.forEach(item => container.appendChild(createModalDetailRow(item)));
+      }
+      syncModalDetailRows();
+    }
+
+    function renderDetailRows(items = []) {
+      const container = document.getElementById('detailList');
+      container.innerHTML = '';
+      if (!items.length) {
+        container.appendChild(createDetailRow());
+      } else {
+        items.forEach(item => container.appendChild(createDetailRow(item)));
+      }
+      syncDetailRows();
+    }
+
+    function resetForm() {
+      document.getElementById('codeForm').reset();
+      editingMstCode = null;
+      selectedMstCode = null;
+      document.getElementById('useYn').value = 'Y';
+      document.getElementById('selectedMasterInfo').textContent = '선택된 마스터코드: 없음';
+      document.getElementById('detailPanelContext').textContent = '선택된 마스터코드에 속하는 상세코드를 등록합니다.';
+      document.getElementById('detailPanel').classList.remove('active');
+      resetDetailRows();
+      document.getElementById('mstCode').focus();
+    }
+
+    function populateMasterForm(master) {
+      document.getElementById('mstCode').value = master.mst_code || '';
+      document.getElementById('mstCodeNm').value = master.mst_code_nm || '';
+      document.getElementById('description').value = master.description || '';
+      document.getElementById('useYn').value = master.use_yn || 'Y';
+    }
+
+    document.getElementById('addDetailBtn').addEventListener('click', () => {
+      const container = document.getElementById('detailList');
+      container.appendChild(createDetailRow());
+      syncDetailRows();
+    });
+
+    document.getElementById('modalAddDetailBtn').addEventListener('click', () => {
+      const container = document.getElementById('modalDetailList');
+      container.appendChild(createModalDetailRow());
+      syncModalDetailRows();
+    });
+
+    document.getElementById('modalCloseBtn').addEventListener('click', () => {
+      document.getElementById('editModal').classList.remove('open');
+    });
+
+    async function loadCodes() {
+      const res = await fetch('/admin/common-codes');
+      const data = await res.json();
+      const tbody = document.getElementById('codeList');
+      tbody.innerHTML = '';
+
+      const masters = data.masters || [];
+      const details = data.details || [];
+      codeData = { masters, details };
+      const detailMap = {};
+
+      details.forEach(item => {
+        if (!detailMap[item.mst_code]) {
+          detailMap[item.mst_code] = [];
+        }
+        detailMap[item.mst_code].push(item);
+      });
+
+      if (!masters.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">아직 등록된 공통코드가 없습니다.</td></tr>';
+        return;
+      }
+
+      masters.forEach(item => {
+        const rows = detailMap[item.mst_code] || [];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.mst_code}</td>
+          <td>${item.mst_code_nm}</td>
+          <td>${item.description}</td>
+          <td>${item.use_yn}</td>
+          <td>
+            <div class="table-actions">
+              <button type="button" class="table-btn edit-btn" data-action="edit" data-mst-code="${item.mst_code}">수정</button>
+              <button type="button" class="table-btn delete-btn" data-action="delete" data-mst-code="${item.mst_code}">삭제</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function deleteCode(mstCode) {
+      if (!confirm('선택한 공통코드를 삭제하시겠습니까?')) return;
+      const res = await fetch(`/admin/common-codes/${encodeURIComponent(mstCode)}`, { method: 'DELETE' });
+      const result = await res.json();
+      alert(result.message || '삭제되었습니다.');
+      if (res.ok) {
+        resetForm();
+        loadCodes();
+      }
+    }
+
+    function editCode(mstCode) {
+      const master = codeData.masters.find(item => item.mst_code === mstCode);
+      if (!master) return;
+      const details = codeData.details.filter(item => item.mst_code === mstCode);
+      editingMstCode = mstCode;
+      selectedMstCode = mstCode;
+      document.getElementById('modalMstCode').value = master.mst_code;
+      document.getElementById('modalMstCodeNm').value = master.mst_code_nm;
+      document.getElementById('modalDescription').value = master.description;
+      document.getElementById('modalUseYn').value = master.use_yn;
+      renderModalDetailRows(details.map(item => ({
+        detailCode: item.dtl_code,
+        detailCodeNm: item.dtl_code_nm,
+        sortOrder: item.sort_order,
+      })));
+      document.getElementById('editModal').classList.add('open');
+    }
+
+    document.getElementById('codeList').addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-action]');
+      if (!button) return;
+      const { action, mstCode } = button.dataset;
+      if (action === 'edit') {
+        editCode(mstCode);
+      } else if (action === 'delete') {
+        deleteCode(mstCode);
+      }
+    });
+
+    document.getElementById('codeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      syncDetailRows();
+
+      const body = {
+        mstCode: document.getElementById('mstCode').value,
+        mstCodeNm: document.getElementById('mstCodeNm').value,
+        description: document.getElementById('description').value,
+        useYn: document.getElementById('useYn').value,
+        details: detailRows,
+        editingMstCode: editingMstCode,
+      };
+
+      const res = await fetch('/admin/common-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const result = await res.json();
+      alert(result.message || '저장되었습니다.');
+      if (res.ok) {
+        const savedMstCode = document.getElementById('mstCode').value;
+        selectedMstCode = savedMstCode || selectedMstCode;
+        await loadCodes();
+        const master = codeData.masters.find(item => item.mst_code === selectedMstCode);
+        if (master) {
+          populateMasterForm(master);
+          document.getElementById('selectedMasterInfo').textContent = `선택된 마스터코드: ${master.mst_code}`;
+          document.getElementById('detailPanelContext').textContent = `상세코드는 마스터코드 ${master.mst_code} 에 연결됩니다.`;
+          document.getElementById('detailPanel').classList.add('active');
+          const details = codeData.details.filter(item => item.mst_code === selectedMstCode);
+          renderDetailRows(details.map(item => ({
+            detailCode: item.dtl_code,
+            detailCodeNm: item.dtl_code_nm,
+            sortOrder: item.sort_order,
+          })));
+        } else {
+          resetForm();
+        }
+      }
+    });
+
+    document.getElementById('modalForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      syncModalDetailRows();
+
+      const body = {
+        mstCode: document.getElementById('modalMstCode').value,
+        mstCodeNm: document.getElementById('modalMstCodeNm').value,
+        description: document.getElementById('modalDescription').value,
+        useYn: document.getElementById('modalUseYn').value,
+        details: modalDetailRows,
+        editingMstCode: editingMstCode,
+      };
+
+      const res = await fetch('/admin/common-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const result = await res.json();
+      alert(result.message || '저장되었습니다.');
+      if (res.ok) {
+        document.getElementById('editModal').classList.remove('open');
+        await loadCodes();
+      }
+    });
+
+    resetDetailRows();
+    loadCodes();
+  </script>
+</body>
+</html>

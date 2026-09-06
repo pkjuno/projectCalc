@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>로그인</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:480px; margin:40px auto; padding:0 16px; }
+    label { display:block; margin-top:12px; }
+    input { width:100%; padding:8px; margin-top:6px; box-sizing:border-box; }
+    button { margin-top:16px; padding:10px 16px; }
+    .msg { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>로그인</h1>
+  <form id="loginForm">
+    <label>아이디(이메일)
+      <input type="text" id="username" name="username" required />
+    </label>
+    <label>비밀번호
+      <input type="password" id="password" name="password" required />
+    </label>
+    <button type="submit">로그인</button>
+  </form>
+  <div class="msg" id="message"></div>
+  <p style="margin-top: 16px;"><a href="/admin/common-code">공통코드 관리 화면으로 이동</a></p>
+  <script src="/js/login.js"></script>
+</body>
+</html>

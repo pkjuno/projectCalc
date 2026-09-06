@@ -1,0 +1,288 @@
+import 'dart:io';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+
+import 'signup_screen.dart';
+
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  bool _isCheckingEmail = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _handleContinue() async {
+    final String email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      _showSnackBar('이메일을 입력해주세요.');
+      return;
+    }
+
+    final emailPattern = RegExp(r'^[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}$');
+    if (!emailPattern.hasMatch(email)) {
+      _showSnackBar('유효한 이메일을 입력해주세요.');
+      return;
+    }
+
+    setState(() {
+      _isCheckingEmail = true;
+    });
+
+    try {
+      final String host = Platform.isIOS ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+      final String apiUrl = '$host/user/check-email';
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      if (response.statusCode != 200) {
+        final responseData = jsonDecode(response.body);
+        _showSnackBar(responseData['message'] ?? '중복 확인에 실패했습니다.');
+        return;
+      }
+
+      final responseData = jsonDecode(response.body);
+      if (responseData['exists'] == true) {
+        _showSnackBar('이미 가입된 이메일입니다.');
+      } else {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SignupScreen(initialEmail: email),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('이메일 중복 체크 오류: $e');
+      _showSnackBar('서버와 통신할 수 없습니다.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingEmail = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (Navigator.canPop(context))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: SvgPicture.asset(
+                        'assets/back_arrow.svg',
+                        width: 22,
+                        height: 22,
+                      ),
+                      tooltip: '뒤로가기',
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: 8),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 24),
+                      const Text(
+                        '머니 노트',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const Spacer(flex: 1),
+                      const Text(
+                        '계정 만들기',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '이 앱에 가입하려면 이메일을 입력하세요',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          hintText: 'email@domain.com',
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.black),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _isCheckingEmail ? null : _handleContinue,
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(Colors.black),
+                          foregroundColor: WidgetStateProperty.all(Colors.white),
+                          padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
+                          shape: WidgetStateProperty.all(RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          )),
+                          elevation: WidgetStateProperty.all(0),
+                        ),
+                        child: _isCheckingEmail
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                '계속',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Text(
+                              '또는',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: () {},
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(const Color(0xFFF2F2F2)),
+                          foregroundColor: WidgetStateProperty.all(Colors.black),
+                          padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
+                          shape: WidgetStateProperty.all(RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          )),
+                          elevation: WidgetStateProperty.all(0),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'G  ',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade400,
+                              ),
+                            ),
+                            const Text(
+                              'Google 계정으로 계속하기',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () {},
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(const Color(0xFFF2F2F2)),
+                          foregroundColor: WidgetStateProperty.all(Colors.black),
+                          padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16)),
+                          shape: WidgetStateProperty.all(RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          )),
+                          elevation: WidgetStateProperty.all(0),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.apple, size: 22, color: Colors.black),
+                            SizedBox(width: 8),
+                            Text(
+                              'Apple 계정으로 계속하기',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(flex: 2),
+                      Text(
+                        '계속을 클릭하면 당사의 서비스 이용 약관 및 개인정보 처리방침에\n동의하는 것으로 간주됩니다.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
